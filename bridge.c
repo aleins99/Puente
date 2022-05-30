@@ -53,14 +53,13 @@ void *OneVehicle(void *voidPTR)
     menu();
     /* crossing the bridge    */
 
-    int aux = middle(Dir[D], 1);
+    int aux = middle(Dir[D]);
     sleep(1);
     if (aux == 1)
     {
       menu();
     }
     ExitBridge(D, ID); /* exit the bridge          */
-    sleep(1);
     pthread_exit(0);
   }
 }
