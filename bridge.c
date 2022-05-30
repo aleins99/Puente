@@ -9,7 +9,7 @@
 #include <pthread.h>
 #include <sched.h>
 #include "bridge-m.h"
-
+#include <string.h>
 #define MAX_CROSSING 20
 #define BIG ((double)0x7FFF)
 
@@ -17,8 +17,8 @@
 int r;
 pthread_mutex_t Screen;
 pthread_mutex_t RandomNumber;
-int tests = 1;
 int Max_Run;
+int cars[20];
 
 /* ---------------------------------------------------------------- */
 /* FUNCTION  Filler():                                              */
@@ -43,41 +43,28 @@ void *OneVehicle(void *voidPTR)
 {
   int *intPTR = (int *)voidPTR;
   int ID = *intPTR;
-  int Direction;
   char *Dir[2] = {"<--", "-->"};
   char space[200];
   int i;
-  double D;
-
+  int D;
   Filler(space, ID);
   pthread_mutex_lock(&Screen);
-  printf("%sVehicle %d started ...\n", space, ID);
+  printf("%sauto0%d started ...\n", space, ID);
   pthread_mutex_unlock(&Screen);
   for (i = 1; i <= Max_Run; i++)
-  {                                      /* for each crossing   */
-    sched_yield();                       /* rest for a while         */
-    pthread_mutex_lock(&RandomNumber);   /* lock random # generator  */
-    D = rand() % 2;                      /* generate a random number */
-    pthread_mutex_unlock(&RandomNumber); /* release random # gen.    */
-    Direction = D;
+  {               /* for each crossing   */
+    sleep(1);     /* rest for a while         */
+    D = cars[ID]; /* generate a random number */
     /* which direction?    */
+    ArriveBridge(D, ID); /* arrive at the bridge     */
     pthread_mutex_lock(&Screen);
-    printf("%s Vehiculo %d (%d) llega al puente en la  "
-           "direccion %s\n",
-           space, ID, i, Dir[Direction]);
+    printf("%sauto0%d (2) cruza el puente %s\n", space, ID, Dir[D]);
     pthread_mutex_unlock(&Screen);
-    ArriveBridge(Direction); /* arrive at the bridge     */
-    pthread_mutex_lock(&Screen);
-    printf("%sVehiculo %d (2) cruza el puente\n", space, ID);
-    pthread_mutex_unlock(&Screen);
-    sched_yield();         /* crossing the bridge      */
-    ExitBridge(Direction); /* exit the bridge          */
-    pthread_mutex_lock(&Screen);
-    printf("%sVehicle %d (3) termina\n", space, ID);
-    pthread_mutex_unlock(&Screen);
+    sleep(1);      /* crossing the bridge      */
+    ExitBridge(D); /* exit the bridge          */
   }
   pthread_mutex_lock(&Screen);
-  printf("%sVehicle %d se va para siempre ...\n", space, ID);
+  printf("%sauto0%d %s se va\n", space, ID, Dir[D]);
   pthread_mutex_unlock(&Screen);
   pthread_exit(0);
 }
@@ -86,41 +73,49 @@ void *OneVehicle(void *voidPTR)
 /*                        The main program                           */
 /* ----------------------------------------------------------------- */
 
-void main(int argc, char *argv[])
+void main()
 {
   pthread_t ID[MAX_THREADS];  /* vehicle ID               */
   size_t Status[MAX_THREADS]; /* vehicle status           */
   int Arg[MAX_THREADS];       /* vehicle argument         */
-  int Threads;                /* # of vehicles            */
+  static int Threads;         /* # of vehicles            */
   int i;
-
-  if (argc != 2)
-  {
-    printf("Coloque la cantidad de vehiculos que tienen que pasar en %s", argv[0]);
-    exit(0);
-  }
   Max_Run = 1;
-  Threads = abs(atoi(argv[1]));
-  if (Threads > MAX_THREADS)
-  {
-    printf("Hay demasiada cantidad de vehiculos %d\n",
-           MAX_THREADS);
-    Threads = MAX_THREADS;
-  }
-
-  printf("Empiezan ...\n");
 
   pthread_mutex_init(&Screen, (void *)NULL);
   BridgeInit();
   srand((unsigned)time(NULL));
-  pthread_t th[Threads];
-  for (i = 0; i < Threads; i++)
-  { /* start vehicles          */
-    Arg[i] = i + 1;
-    pthread_create(th + i, NULL, OneVehicle, (void *)&(Arg[i]));
-  }
-  for (i = 0; i < Threads; i++) /* wait for vehicles       */
-    pthread_join(th[i], (void *)&(Status[i]));
+  char op[10];
+  int entrada = 0;
+  while (1 == 1)
+  {
+    strcpy(op, "no");
+    printf("Ingrese un comando \n");
+    int ant = entrada;
+    while (strcmp(op, "start") != 0)
+    {
+      fflush(stdin);
+      printf("\n");
+      gets(op);
+      if (strcmp(op, "car der") == 0)
+        cars[entrada++] = 1;
+      if (strcmp(op, "car izq") == 0)
+        cars[entrada++] = 0;
+      if (strcmp(op, "status") == 0)
+        status();
+    }
+    printf("Empiezan ...\n");
+    Threads = entrada;
+    pthread_t th[Threads];
+    for (i = ant; i < Threads; i++)
+    { /* start vehicles          */
+      Arg[i] = i;
+      pthread_create(th + i, NULL, OneVehicle, (void *)&(Arg[i]));
+    }
+    for (i = ant; i < Threads; i++) /* wait for vehicles       */
+      pthread_join(th[i], (void *)&(Status[i]));
 
-  printf("Termina ...\n");
+    printf("Termina ...\n");
+    sleep(1);
+  }
 }
